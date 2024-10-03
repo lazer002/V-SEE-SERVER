@@ -267,12 +267,25 @@ router.post('/searchfriend', authMiddleware, async (req, res) => {
 // ################################## add friend ################################
 router.post('/addfriend', authMiddleware, async (req, res) => {
   try {
-    const { userId } = req.body;
+    const { userId, action } = req.body;
     const sessionUserId = req.user_id;
+
+    const existingRequest = await newuser.findOne({
+      user_id: userId,
+      'friend_requests.from_user': sessionUserId,
+    });
+
+    if (existingRequest) {
+      return res.status(400).json({ msg: 'already' });
+    }
+
+    const updateData = action === 'Add' 
+      ? { $addToSet: { friend_requests: { from_user: sessionUserId, status: 'pending' } } } 
+      : { $addToSet: { friend_requests: { from_user: sessionUserId, status: 'blocked' } } };
 
     const data = await newuser.findOneAndUpdate(
       { user_id: userId },
-      { $addToSet: { friend_requests: { from_user: sessionUserId, status: 'pending' } } },
+      updateData,
       { new: true }
     );
 
