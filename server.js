@@ -24,7 +24,7 @@ app.use('/uploads', express.static('uploads'));
 app.use('/', router);
 
 io.on('connection', (socket) => {
-  console.log('New client connected');
+
 
   socket.on('joinRoom', (room) => {
     socket.join(room);

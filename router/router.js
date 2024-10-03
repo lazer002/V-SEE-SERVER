@@ -179,40 +179,50 @@ router.post('/updateUser', upload.single('Profile'), async (req, res) => {
 
 
 
-// ##############################   user login ##########################
+// ############################## uuser login ##########################
 
 router.post('/signup', async (req, res) => {
   try {
+    const { email, password, username } = req.body;
 
-    const { email, password, username } = req.body
     if (!email || !password || !username) {
-      return res.json({ msg: ' bhar sb' })
-    } else {
-
-      bcrypt.hash(password, 12, async function (err, be) {
-
-        const user_id = `user_${Math.floor(Math.random() * 1000000)}`
-
-        const data = new newuser({ email, password: be, username, user_id })
-        const token = jweb.sign({ email: email }, secret)
-        // console.log(token)
-        await data.save()
-        res.json({ token })
-      })
-
+      return res.json({ msg: 'Please fill in all fields' });
     }
+
+    const existingUser = await newuser.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ msg: 'User already exists' });
+    }
+
+    bcrypt.hash(password, 12, async function (err, hashedPassword) {
+      if (err) {
+        return res.status(500).json({ msg: 'Error hashing password' });
+      }
+
+      const user_id = `user_${Math.floor(Math.random() * 1000000)}`;
+      const data = new newuser({ email, password: hashedPassword, username, user_id });
+      const token = jweb.sign({ email }, secret);
+
+      await data.save();
+      res.json({ token });
+    });
+
   } catch (error) {
-    console.log(error)
+    console.log(error);
+    res.status(500).json({ msg: 'Server error' });
   }
-})
+});
+
+
 
 router.post('/signin', async (req, res) => {
   try {
+
     const { email, password } = req.body
     let data = await newuser.findOne({ email: email })
     if (!data) {
       console.log('data: ', data);
-      return res.status(400).json({ msg: ' sahi se dal details' })
+      return res.status(400).json({ msg: 'Incorrect Details' })
     }
     ismatch = await bcrypt.compare(password, data.password)
 
