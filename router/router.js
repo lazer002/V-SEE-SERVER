@@ -266,35 +266,44 @@ router.post('/searchfriend', authMiddleware, async (req, res) => {
 
 
 // ################################## add friend ################################
+
+
+
 router.post('/addfriend', authMiddleware, async (req, res) => {
   try {
     const { userId, action } = req.body;
     const sessionUserId = req.user_id;
 
-    const existingRequest = await newuser.findOne({
-      user_id: userId,
-      'friend_requests.from_user': sessionUserId,
-    });
+    const user = await newuser.findOne({ user_id: userId });
 
-    if (existingRequest) {
-      return res.status(400).json({ msg: 'already' });
-    }
-
-    const updateData = action === 'Add' 
-      ? { $addToSet: { friend_requests: { from_user: sessionUserId, status: 'pending' } } } 
-      : { $addToSet: { friend_requests: { from_user: sessionUserId, status: 'blocked' } } };
-
-    const data = await newuser.findOneAndUpdate(
-      { user_id: userId },
-      updateData,
-      { new: true }
-    );
-
-    if (!data) {
+    if (!user) {
       return res.status(404).json({ msg: 'User not found' });
     }
 
-    return res.status(200).json({ data });
+    const existingRequest = user.friend_requests.find(
+      (request) => request.from_user === sessionUserId
+    );
+
+    if (existingRequest) {
+      await newuser.findOneAndUpdate(
+        { user_id: userId },
+        { $pull: { friend_requests: { from_user: sessionUserId } } },
+        { new: true }
+      );
+      return res.status(200).json({ msg: 'request deleted' });
+    }
+
+    if (action === 'Add') {
+      await newuser.findOneAndUpdate(
+        { user_id: userId },
+        { $addToSet: { friend_requests: { from_user: sessionUserId, status: 'pending' } } },
+        { new: true }
+      );
+      return res.status(200).json({ msg: 'request sent' });
+    }
+
+    return res.status(400).json({ msg: 'Invalid action' });
+
   } catch (error) {
     console.log('error: ', error);
     return res.status(500).json({ msg: 'Server error' });
@@ -302,6 +311,38 @@ router.post('/addfriend', authMiddleware, async (req, res) => {
 });
 
 
+
+
+router.post('/friendreq', async (req, res) => {
+  try {
+    const users = await newuser.find({});
+
+    const updatedUsers = await Promise.all(users.map(async (user) => {
+      const friendRequestsWithDetails = await Promise.all(
+        user.friend_requests.map(async (request) => {
+          const fromUserDetails = await newuser.findOne(
+            { user_id: request.from_user },
+            { username: 1, email: 1, user_id: 1 } // Select fields you need
+          );
+          return {
+            ...request._doc,  // Spread the original request data
+            from_user_details: fromUserDetails || {}, // Add full user details
+          };
+        })
+      );
+      
+      return {
+        ...user._doc,
+        friend_requests: friendRequestsWithDetails, 
+      };
+    }));
+
+    return res.status(200).json(updatedUsers);
+  } catch (error) {
+    console.log('error: ', error);
+    return res.status(500).json({ msg: 'Server error' });
+  }
+});
 
 
 
