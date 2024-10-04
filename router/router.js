@@ -214,7 +214,6 @@ router.post('/signup', async (req, res) => {
 });
 
 
-
 router.post('/signin', async (req, res) => {
   try {
 
@@ -274,7 +273,28 @@ router.post('/addfriend', authMiddleware, async (req, res) => {
     const { userId, action } = req.body;
     const sessionUserId = req.user_id;
 
+
     const user = await newuser.findOne({ user_id: userId });
+
+    const existingRequest = await newuser.findOne({
+      user_id: userId,
+      'friend_requests.from_user': sessionUserId,
+    });
+
+    if (existingRequest) {
+      return res.status(400).json({ msg: 'already' });
+    }
+
+    const updateData = action === 'Add' 
+      ? { $addToSet: { friend_requests: { from_user: sessionUserId, status: 'pending' } } } 
+      : { $addToSet: { friend_requests: { from_user: sessionUserId, status: 'blocked' } } };
+
+    const data = await newuser.findOneAndUpdate(
+      { user_id: userId },
+      updateData,
+      { new: true }
+    );
+
 
     if (!user) {
       return res.status(404).json({ msg: 'User not found' });
