@@ -238,11 +238,11 @@ router.post('/addfriend', authMiddleware, async (req, res) => {
       return res.status(404).json({ msg: 'User not found' });
     }
 
-    const existingRequest = user.friend_requests.find(
+    const existingR = user.friend_requests.find(
       (request) => request.from_user === sessionUserId
     );
 
-    if (existingRequest) {
+    if (existingR) {
       await newuser.findOneAndUpdate(
         { user_id: userId },
         { $pull: { friend_requests: { from_user: sessionUserId } } },
