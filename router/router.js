@@ -206,70 +206,54 @@ router.post('/searchfriend', authMiddleware, async (req, res) => {
 
 
 
+
 router.post('/addfriend', authMiddleware, async (req, res) => {
   try {
-    const { userId, action } = req.body;
+    console.log(req.body);
+    const { a, action } = req.body;
     const sessionUserId = req.user_id;
 
-
-    const user = await newuser.findOne({ user_id: userId });
-
-    const existingRequest = await newuser.findOne({
-      user_id: userId,
-      'friend_requests.from_user': sessionUserId,
-    });
-
-    if (existingRequest) {
-      return res.status(400).json({ msg: 'already' });
-    }
-
-    const updateData = action === 'Add' 
-      ? { $addToSet: { friend_requests: { from_user: sessionUserId, status: 'pending' } } } 
-      : { $addToSet: { friend_requests: { from_user: sessionUserId, status: 'blocked' } } };
-
-    const data = await newuser.findOneAndUpdate(
-      { user_id: userId },
-      updateData,
-      { new: true }
-    );
-
+    const user = await newuser.findOne({ user_id: a });
 
     if (!user) {
       return res.status(404).json({ msg: 'User not found' });
     }
 
-    const existingR = user.friend_requests.find(
+    const existingRequest = user.friend_requests.find(
       (request) => request.from_user === sessionUserId
     );
 
-    if (existingR) {
-      await newuser.findOneAndUpdate(
-        { user_id: userId },
-        { $pull: { friend_requests: { from_user: sessionUserId } } },
-        { new: true }
-      );
-      return res.status(200).json({ msg: 'request deleted' });
+    if (existingRequest) {
+      if (action === 'Add') {
+        return res.status(400).json({ msg: 'Request already sent' });
+      } else {
+        await newuser.findOneAndUpdate(
+          { user_id: a },
+          { $pull: { friend_requests: { from_user: sessionUserId } } },
+          { new: true }
+        );
+        return res.status(200).json({ msg: 'Request deleted' });
+      }
     }
 
-    if (action === 'Add') {
-      await newuser.findOneAndUpdate(
-        { user_id: userId },
-        { $addToSet: { friend_requests: { from_user: sessionUserId, status: 'pending' } } },
-        { new: true }
-      );
-      return res.status(200).json({ msg: 'request sent' });
-    }
+    const updateData = action === 'Add' 
+      ? { $addToSet: { friend_requests: { from_user: sessionUserId, status: 'pending' } } } 
+      : { $addToSet: { friend_requests: { from_user: sessionUserId, status: 'rejected' } } };
+      
+      console.log('user_id: ', a);
+    await newuser.findOneAndUpdate(
+      { user_id: a },
+      updateData,
+      { new: true }
+    );
 
-    return res.status(400).json({ msg: 'Invalid action' });
+    return res.status(200).json({ msg: 'Request sent' });
 
   } catch (error) {
     console.log('error: ', error);
     return res.status(500).json({ msg: 'Server error' });
   }
 });
-
-
-
 
 router.post('/friendreq', async (req, res) => {
   try {
