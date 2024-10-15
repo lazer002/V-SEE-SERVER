@@ -285,27 +285,30 @@ router.post('/friendreq', async (req, res) => {
 
 router.get('/friend-requests', authMiddleware, async (req, res) => {
   try {
-      const sessionUserId = req.user_id;
-      const user = await newuser.findOne({ user_id: sessionUserId });
+    const sessionUserId = req.user_id;
+    const user = await newuser.findOne({ user_id: sessionUserId });
 
-      if (!user) {
-          return res.status(404).json({ message: 'User not found' });
-      }
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
-      const friendRequests = user.friend_requests;
+    // Filter only the friend requests where status is 'accepted'
+    const acceptedFriendRequests = user.friend_requests.filter(request => request.status === 'pending');
 
-      const fromUserDetails = await Promise.all(friendRequests.map(async (request) => {
-          const fromUserId = request.from_user;
-          const fromUser = await newuser.findOne({ user_id: fromUserId });
+    // Fetch the details of users who sent accepted friend requests
+    const fromUserDetails = await Promise.all(acceptedFriendRequests.map(async (request) => {
+      const fromUserId = request.from_user;
+      const fromUser = await newuser.findOne({ user_id: fromUserId });
 
-          return fromUser || null;
-      }));
+      return fromUser || null;
+    }));
 
-      res.json({ Frequests: fromUserDetails });
+    res.json({ Frequests: fromUserDetails });
   } catch (error) {
-      res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 });
+
 
 router.post('/acceptfriend', authMiddleware, async (req, res) => {
   const { from_user_id } = req.body;
@@ -316,7 +319,7 @@ router.post('/acceptfriend', authMiddleware, async (req, res) => {
       { user_id: sessionUserId, 'friend_requests.from_user': from_user_id },
       { $set: { 'friend_requests.$.status': 'accepted' } }
     );
-    console.log('updateResult: ', updateResult);
+
 
     if (updateResult.matchedCount > 0) {
       const updatedUser = await newuser.findOne({ user_id: sessionUserId });
