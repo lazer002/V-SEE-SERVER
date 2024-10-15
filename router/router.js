@@ -20,12 +20,6 @@ const authMiddleware = require('../auth/authMiddleware')
 
 router.get('/getuser', authMiddleware, async (req, res) => {
   try {
-
-
-    // const token = req.headers.authorization.split(' ')[1];
-    // const sessionUser = jwt.verify(token, 'your_jwt_secret');
-
-
     const user = { email: req.email, user_id: req.user_id };
     const data = await newuser.find({ user_id: { $ne: req.user_id },'friend_requests.status': 'accepted' });
     return res.status(200).json({ data, user });
@@ -154,7 +148,7 @@ router.post('/signup', async (req, res) => {
 
 router.post('/signin', async (req, res) => {
   try {
-
+console.log(req.body);
     const { email, password } = req.body
     let data = await newuser.findOne({ email: email })
     if (!data) {
