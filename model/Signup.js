@@ -30,7 +30,7 @@ let userschema = new mongoose.Schema({
   },
   friend_requests: [{
     from_user: {
-      type:String,
+      type:mongoose.Schema.Types.ObjectId,
       ref: 'User'
     },
     status: {
